@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>test</title>
+	<link rel="stylesheet" type="text/css" href="./player/player.css">
+	<meta name="viewport"  content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" >
+	<style type="text/css">
+	html{
+		scroll-behavior:smooth;
+		color: #482929;
+	}
+	.back{
+		position: fixed;
+		bottom: 20px;
+		right: 20px;
+	}
+	.player{
+		/*margin: 50px 0;*/
+	}
+	.gery{
+		background-color: #9b9b9b;
+	}
+	</style>
+</head>
+<body>
+	<div id="app">
+		<div class="talk-container">
+			<div v-for="(item,index) in playerList" :data-index="index">
+				<player @play="_play" @pause="_pause" @seek="_seek"
+				:time="item.time" :current="item.current" :url="item.url" :count="3" :ended="item.ended" :index="index" :mid="item.id" :pptId="1" ref="myplayer"></player>
+			</div>
+		</div>
+		<audio preload="auto" :src="isPlaySrc" id="myAudio" ref="audio"></audio>
+		<audio preload="auto" :src="isNextPlaySrc" ></audio>
+		<button @click="audioControlPrev" :class="playControlPrev">上一首</button>
+		<button @click="audioControlNext" :class="playControlNext">下一首</button>
+		<button @click="playNow">
+			<span v-if="!audioPlayState">播放</span>
+			<span v-else>暂停</span>
+		</button>
+		<button @click="back" class="back" v-show="backToTop_Icon">回到播放位置</button>
+	</div>
+
+	<script src="https://cdn.bootcss.com/vue/2.5.13/vue.min.js"></script>
+	<script type="text/javascript" src="./player/player.js"></script>
+	<script type="text/javascript">
+		var vm = new Vue({
+		    el: '#app',
+		    data:{
+		    	audioRef:null, //音频组件
+		    	isPlaySrc:null, //当前播放音频路径
+		    	isNextPlaySrc:null, //下一个音频播放路径
+		    	isPlayIndex:0, //播放列表里当前播放音频的索引
+		    	isNextPlayIndex:1, //播放列表里下一个播放音频的索引
+		    	audioPlayState:false, //播放状态 - 是否在播放
+		    	playerList:[], //播放列表
+		    	room_id:47,
+		    	backToTop_Icon:false
+		    },
+		    created(){
+		    	this.playerList=[{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:40,mid:1},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/d97a2daa17f0380720e4478745ae1791.mp3',time:51,mid:2},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:39,mid:3},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180627/742065b5181da0ef1f965da1afb1e184.mp3',time:10,mid:4},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:10,mid:5},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:40,mid:6},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:40,mid:7},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/d97a2daa17f0380720e4478745ae1791.mp3',time:51,mid:8},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:39,mid:9},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180627/742065b5181da0ef1f965da1afb1e184.mp3',time:10,mid:10},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:10,mid:11},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:40,mid:12},]
+
+		    	this.playerList.map((item)=>{
+		    		item.ended =false
+		    	})
+		    	this.isPlaySrc = this.playerList[this.isPlayIndex].src
+		    	this.isNextPlaySrc = this.playerList[this.isNextPlayIndex].src
+		    },
+		    computed: {
+		        playControlPrev() {
+		            return this.isPlayIndex == 0 ? 'gery' : ''
+		        },
+		        playControlNext(){
+		            return this.isPlayIndex == this.playerList.length - 1 ? 'gery' : ''
+		        }
+		    },
+		    mounted(){
+		    	this.init() //初始化
+		    	this.backTopShow()
+		    },
+		    components: {
+		        player: player,
+		    },
+		    methods:{
+		    	init(){
+		    		//let _ = this
+		    		this.audioRef = this.$refs.audio
+		    		this.audioRef.addEventListener("timeupdate", this.audioTimeupdate,false)
+				    this.audioRef.addEventListener("ended", this.audioEnded,false)
+				    this.audioRef.addEventListener("pause", this.audioPause,false)
+				    this.audioRef.addEventListener("playing", this.audioPlaying,false)
+				    this.audioRef.addEventListener("canplay", this.canplay,false)
+				    this.audioRef.addEventListener("loadstart", this.loadstart,false)
+				    this.getAudioPlayState()
+		    	},
+		    	//获取音频播放情况
+		    	getAudioPlayState(){
+		    		this.audioEndedStorage =JSON.parse(localStorage.getItem('audioEnded'))
+		    		if (this.audioEndedStorage != null) {
+			    		let room_record = this.audioEndedStorage
+			    		if (room_record != null) {
+				    		this.playerList.map((item,index)=>{
+								let id = "" + this.room_id +'_'+ item.mid
+				    			if (room_record[id] != undefined) {
+		    						let arr = item
+		    						arr.ended = true
+		    						Vue.set(this.playerList, index, arr)
+		    					}
+				    		})
+			    		}
+		    		}
+		    	},
+		    	//音频播放时
+		    	audioTimeupdate(e){
+		    		// console.log(this.audioRef.buffered) //缓存进度 0-1
+		    		this.$refs.myplayer[this.isPlayIndex].getParentCurrent(e.target.currentTime)
+		    	},
+		    	//音频播放结束时
+		    	audioEnded(e){
+		    		console.log('audioEnded')
+		    		//let audioEnded = []
+		    		let record = [{id:this.playerList[this.isPlayIndex].mid,time:(new Date).getTime()}]
+
+		    		if (this.audioEndedStorage == null) {
+		    			this.audioEndedStorage = {}
+		    		}
+		    		let id = "" + this.room_id +'_'+ this.playerList[this.isPlayIndex].mid
+		    		this.audioEndedStorage[id] = (new Date).getTime()
+		    		localStorage.audioEnded = JSON.stringify(this.audioEndedStorage)
+
+		    		this.$refs.myplayer[this.isPlayIndex].getParentCurrent(0)
+            		this.$refs.myplayer[this.isPlayIndex].getParentAudioEnd(true)
+		    		this.audioControlNext()
+		    	},
+		    	//音频暂停时
+		    	audioPause(e){
+		    		console.log('audioPause')
+		    		this.$refs.myplayer[this.isPlayIndex].getParentAudioState(false)
+		    	},
+		    	//音频播放时
+		    	audioPlaying(e){
+		    		console.log('audioPlaying')
+		    		this.$refs.myplayer[this.isPlayIndex].getParentAudioState(true)
+		    		let id = "" + this.room_id +'_'+ this.playerList[this.isPlayIndex].mid
+		    		let lastReaded = {}
+		    		lastReaded[id] = (new Date).getTime()
+		    		localStorage.audioLastReaded = JSON.stringify(lastReaded)
+		    		let that = this
+		    		setTimeout(()=>{
+		    			that.back()
+		    		},50)
+		    	},
+		    	//音频可以播放时
+		    	canplay(e){
+		    		console.log('可以播放')
+		    	},
+		    	//音频加载时
+		    	loadstart(e){
+		    		console.log('加载音频')
+		    	},
+		    	//
+		    	// play(e){
+		    	// 	this.audioRef  = this.$refs.audio
+		    	// 	this.audioRef.addEventListener('ended', this.next, false);
+		    	// 	this.audioRef.play()
+		    	// 	this.isPlayIndex = e.target.dataset.index
+		    	// },
+		    	next(){
+
+		    	},
+		    	//音频控制 - 上一首
+		    	audioControlPrev(){
+		    		if (this.isPlayIndex == 0) {
+		    			return
+		    		}
+		    		this.$refs.myplayer[this.isPlayIndex].getParentAudioState(false)
+		    		this.audioPlayState = true
+		    		this.isPlayIndex = parseInt(this.isPlayIndex) - 1
+		    		this.isNextPlaySrc = this.isPlayIndex != this.playerList.length - 1
+					? this.playerList[this.isPlayIndex+1].audio_src:this.isNextPlaySrc = this.isPlaySrc
+		    		this.isPlaySrc = this.playerList[this.isPlayIndex].src
+		    		let _ = this
+		    		setTimeout(()=>{
+		    			_.audioRef.play()
+		    		},1000)
+
+		    	},
+		    	//音频控制 - 下一首
+		    	audioControlNext(){
+		    		if (this.isPlayIndex == this.playerList.length-1) {
+		    			return
+		    		}
+		    		this.$refs.myplayer[this.isPlayIndex].getParentAudioState(false)
+		    		this.audioPlayState = true
+					this.isPlayIndex = parseInt(this.isPlayIndex) + 1
+					this.isNextPlaySrc = this.isPlayIndex != this.playerList.length - 1
+					? this.playerList[this.isPlayIndex+1].audio_src:this.isNextPlaySrc = this.isPlaySrc
+		    		this.isPlaySrc = this.playerList[this.isPlayIndex].src
+		    		let _ = this
+		    		setTimeout(()=>{
+		    			_.audioRef.play()
+		    		},1000)
+		    	},
+		    	//切换音频
+		    	change(index){
+		    		let _ = this
+		    		_.isPlayIndex = index
+		    		_.isNextPlaySrc = _.isPlayIndex != _.playerList.length - 1
+					? _.playerList[_.isPlayIndex+1].audio_src:_.isNextPlaySrc = _.isPlaySrc
+		    		_.isPlaySrc = _.playerList[_.isPlayIndex].src
+		    		setTimeout(()=>{
+		    			_.audioRef.play()
+		    		},1000)
+		    	},
+		    	//音频控制 - 播放暂停音频
+		    	playNow(){
+		    		if (!this.audioPlayState) {
+		    			const audio = this.$refs.audio
+			    		audio.play()
+			    		this.audioPlayState = true
+		    		}else{
+		    			this.audioRef.pause()
+		    			this.audioPlayState = false
+		    		}
+		    	},
+		    	// pause(){
+		    	// 	this.audioRef.pause()
+		    	// },
+		    	// _audioIndexChange(index){
+		    	// 	console.log(index)
+		    	// },
+		    	//组件里回调 - 播放
+		    	_play(index){
+		    		this.$refs.myplayer[this.isPlayIndex].getParentAudioState(false)
+		    		this.audioPlayState = true
+		    		if(index != this.isPlayIndex){
+		    			this.audioRef.pause()
+		    			this.change(index)
+		    			//this.audioRef.play()
+		    		}else{
+		    			this.audioRef.play()
+		    		}
+		    	},
+		    	//组件里回调 - 暂停
+		    	_pause(){
+		    		this.audioRef.pause()
+		    	},
+		    	//组件里回调 - 定位音频
+		    	_seek(time){
+		    		this.audioRef.currentTime = time
+		    	},
+		    	//组件里回调 - 定位当前音频块
+		    	back(){
+		    		document.querySelector('.player.player_active').scrollIntoView({block:'center',behavior:'smooth',inline:'center'});
+		    	},
+		    	//当播放列表距离顶部大于360px时，返回顶部的按钮出现
+		        backTopShow(){
+		            let that = this
+		            document.querySelector('.talk-container').onscroll = function(){
+		                let distance = document.querySelector('.talk-container').scrollTop;
+		                console.log(distance)
+		                if(distance > 30 && that.audioPlayState){
+		                    that.backToTop_Icon = true
+		                } else{
+		                    that.backToTop_Icon = false
+		                }
+		            }
+		        },
+		    }
+		})
+	</script>
+</body>
+</html>
+<!--
+initAudio
+ -->

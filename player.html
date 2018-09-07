@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>test</title>
+	<link rel="stylesheet" type="text/css" href="./player/player.css">
+</head>
+<body>
+	<div id="app">
+		<div v-for="(item,index) in playList" :data-index="index">
+			<player @play="_play" @audioIndexChange="_audioIndexChange" :time="item.current" :url="item.url" :count="3" :index="index" :mid="item.id" :pptId="1"></player>
+		</div>
+		<audio preload="auto" :src="isPlaySrc" id="myAudio" ref="audio"></audio>
+		<audio preload="auto" :src="isNextPlaySrc" ></audio>
+		<button @click="prev">上一首</button>
+		<button @click="next">下一首</button>
+		<button @click="playNow">播放</button>
+		<button @click="pause">暂停</button>
+
+	</div>
+
+	<script src="https://cdn.bootcss.com/vue/2.5.13/vue.min.js"></script>
+	<script type="text/javascript" src="./player/player.js"></script>
+	<script type="text/javascript">
+		var vm = new Vue({
+		    el: '#app',
+		    data:{
+		    	audioRef:null,
+		    	isPlaySrc:null,
+		    	isNextPlaySrc:null,
+		    	isPlayIndex:0,
+		    	isNextPlayIndex:1,
+		    	playList:[
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:39,current:39,id:1},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/d97a2daa17f0380720e4478745ae1791.mp3',time:10,current:10,id:2},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:10,current:10,id:3},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180627/742065b5181da0ef1f965da1afb1e184.mp3',time:10,current:10,id:4},
+		    	{src:'https://icebear-2018-1.oss-cn-shenzhen.aliyuncs.com/upload/files/20180807/726d6b4300df749877e3428ac25a443d.mp3',time:10,current:10,id:5}]
+		    },
+		    created(){
+		    	this.isPlaySrc = this.playList[this.isPlayIndex].src
+		    	this.isNextPlaySrc = this.playList[this.isNextPlayIndex].src
+
+		    },
+		    mounted(){
+		    	this.init()
+		    },
+		    components: {
+		        player: player,
+		    },
+		    methods:{
+		    	init(){
+		    		//let _ = this
+		    		this.audioRef = this.$refs.audio
+		    		console.log(this.audioRef)
+		    		this.audioRef.addEventListener("timeupdate", this.audioTimeupdate,false)
+				    this.audioRef.addEventListener("ended", this.next,false)
+				    this.audioRef.addEventListener("pause", this.audioPause,false)
+				    this.audioRef.addEventListener("playing", this.audioPlaying,false)
+                    // _.audioRef.on("timeupdate", _.audioTimeupdate)
+                    // _.audioRef.on("ended", _.audioEnded)
+                    // _.audioRef.on("pause", _.audioPause)
+                    // _.audioRef.on("playing", _.audioPlaying)
+                    //this.autoplayFirstSpeakMsg()
+		    	},
+		    	audioTimeupdate(e){
+		    		console.log('audioTimeupdate')
+		    		console.log(e)
+		    		console.log(e.target.currentTime)
+		    		this.playList[this.isPlayIndex].current = this.playList[this.isPlayIndex].time - parseInt(e.target.currentTime)
+		    		console.log(this.playList[this.isPlayIndex].current)
+		    	},
+		    	audioEnded(e){
+		    		console.log('audioEnded')
+		    		console.log(e)
+		    	},
+		    	audioPause(e){
+		    		console.log('audioPause')
+		    		console.log(e)
+		    	},
+		    	audioPlaying(e){
+		    		console.log('audioPlaying')
+		    		console.log(e)
+		    		console.log(this.audioRef.currentTime)
+		    	},
+		    	play(e){
+		    		this.audioRef  = this.$refs.audio
+		    		this.audioRef.addEventListener('ended', this.next, false);
+		    		console.log(e)
+		    		console.log(this.audioRef)
+		    		this.audioRef.play()
+		    		this.isPlayIndex = e.target.dataset.index
+		    		console.log(this.isPlayIndex)
+		    		//set
+		    		//document.getElmentId('myAudio')
+		    	},
+		    	autoPlay(){
+
+		    	},
+		    	prev(){
+		    		this.isPlayIndex = parseInt(this.isPlayIndex) - 1
+		    		console.log(this.playList[this.isPlayIndex])
+		    		this.isPlaySrc = this.playList[this.isPlayIndex].src
+		    		let _ = this
+		    		setTimeout(()=>{
+		    			_.audioRef.play()
+		    		},1000)
+
+		    	},
+		    	next(){
+					this.isPlayIndex = parseInt(this.isPlayIndex) + 1
+					this.isNextPlaySrc = this.isPlaySrc
+		    		this.isPlaySrc = this.playList[this.isPlayIndex].src
+		    		let _ = this
+		    		setTimeout(()=>{
+		    			_.audioRef.play()
+		    		},1000)
+		    	},
+		    	change(index){
+		    		this.isPlayIndex = index
+					this.isNextPlaySrc = this.isPlaySrc
+		    		this.isPlaySrc = this.playList[this.isPlayIndex].src
+		    		let _ = this
+		    		setTimeout(()=>{
+		    			_.audioRef.play()
+		    		},1000)
+		    	},
+		    	playNow(){
+		    		const audio = this.$refs.audio
+		    		audio.play()
+		    	},
+		    	_audioIndexChange(index){
+		    		console.log(index)
+		    	},
+		    	_play(index){
+		    		console.log(index)
+		    		if(index != this.isPlayIndex){
+		    			this.audioRef.pause()
+		    			this.change(index)
+		    			//this.audioRef.play()
+		    		}else{
+		    			this.audioRef.play()
+		    		}
+		    		//this.audioRef  = this.$refs.audio
+		    		//this.audioRef.addEventListener('ended', this.next, false);
+		    		//console.log(this.audioRef)
+		    		// this.audioRef.play()
+		    		// this.isPlayIndex = index
+		    		//console.log(this.isPlayIndex)
+		    	},
+		    	pause(){
+		    		this.audioRef.pause()
+		    	}
+		    }
+		})
+	</script>
+</body>
+</html>
+<!--
+initAudio
+ -->
